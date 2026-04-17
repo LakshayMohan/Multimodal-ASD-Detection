@@ -1,10 +1,11 @@
 streamlit
-mne
-tensorflow
+numpy
+pandas
+scikit-learn==1.2.2
 joblib
-scikit-learn
-pillow
+tensorflow-cpu
+mne
 scipy
 xgboost
-pandas
-numpy
+pillow
+gdown
