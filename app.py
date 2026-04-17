@@ -268,14 +268,45 @@ if st.button("Generate Prediction", type="primary"):
                     eeg_scaled = eeg_scaler.transform(eeg_features)
                     prob_asd_eeg = float(eeg_model.predict_proba(eeg_scaled)[0][1])
 
-                # Meta-Learner
+                # --- STAGE 2: META-LEARNER FUSION ---
                 meta_features = np.array([[prob_asd_img, prob_asd_eeg, prob_asd_beh]])
+
+                meta_prediction = meta_model.predict(meta_features)[0]
                 cumulative_asd_prob = meta_model.predict_proba(meta_features)[0][1]
 
-                if cumulative_asd_prob >= 0.5:
-                    st.error(f"Autistic Traits Detected (Confidence: {cumulative_asd_prob*100:.1f}%)")
+                if meta_prediction == 1 or cumulative_asd_prob >= 0.5:
+                    final_prediction = "Autistic"
+                    color = "lightblue"
                 else:
-                    st.success(f"Typical Development (Confidence: {(1-cumulative_asd_prob)*100:.1f}%)")
+                    final_prediction = "Non Autistic"
+                    color = "lightgreen"
+
+                # --- DISPLAY RESULTS ---
+                st.success("Analysis Complete")
+                st.subheader("Final Multimodal Prediction:")
+                st.markdown(
+                    f"""
+                    <div style="text-align: center; padding: 20px; border-radius: 10px; background-color: {color};">
+                        <h2 style="color: black; margin: 0;">{final_prediction}</h2>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                # --- DEBUGGING PANEL ---
+                with st.expander("🔍 View Individual Model Confidences (Debug)", expanded=False):
+                    st.write("This shows the raw probability of ASD predicted by each individual Stage-1 model and how the Meta-Learner weighed them.")
+
+                    c1, c2, c3, c4 = st.columns(4)
+                    with c1:
+                        st.metric(label="Behavioral RF", value=f"{prob_asd_beh*100:.1f}%")
+                    with c2:
+                        st.metric(label="Facial VGG-Xception", value=f"{prob_asd_img*100:.1f}%")
+                    with c3:
+                        st.metric(label="EEG Random Forest", value=f"{prob_asd_eeg*100:.1f}%")
+                    with c4:
+                        st.metric(label="XGBoost Meta-Learner", value=f"{cumulative_asd_prob*100:.1f}%",
+                                  delta="Final Confidence", delta_color="off")
 
             except Exception as e:
                 st.error(f"Error during processing: {e}")
