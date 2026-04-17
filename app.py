@@ -101,24 +101,54 @@ def process_image(uploaded_file):
     return np.expand_dims(img_array, axis=0)
 
 # ==========================================
-# 2. CACHED MODEL LOADING (Using local names now)
+# 2. CACHED MODEL LOADING
 # ==========================================
+import h5py
+import json
+
+def patch_h5_file(filepath):
+    """Surgically removes the problematic Keras 3 quantization_config from the .h5 file."""
+    try:
+        with h5py.File(filepath, 'r+') as f:
+            if 'model_config' in f.attrs:
+                config = json.loads(f.attrs['model_config'])
+                
+                # Recursively search and destroy the bad configuration
+                def clean_config(d):
+                    if isinstance(d, dict):
+                        d.pop('quantization_config', None)
+                        for k, v in d.items():
+                            clean_config(v)
+                    elif isinstance(d, list):
+                        for item in d:
+                            clean_config(item)
+                            
+                clean_config(config)
+                # Save the cleaned config back to the file
+                f.attrs['model_config'] = json.dumps(config).encode('utf-8')
+    except Exception as e:
+        pass # If it fails, the file is likely already clean
+
 @st.cache_resource
 def load_models():
-    # Note: We now load from the local directory where gdown placed them
+    # 1. Clean the image model BEFORE Keras is allowed to look at it
+    patch_h5_file('image_vgg_xception_model.h5')
+    
+    # 2. Load all models
     eeg_model = joblib.load('eeg_random_forest_model.joblib')
     eeg_scaler = joblib.load('eeg_scaler.joblib')
-    img_model = tf.keras.models.load_model('image_vgg_xception_model.h5')
+    img_model = tf.keras.models.load_model('image_vgg_xception_model.h5', compile=False)
     beh_model = joblib.load('behavioral_rf_model.pkl')
     beh_cols = joblib.load('rf_model_columns.pkl')
     meta_model = joblib.load('meta_learner_xgb.joblib')
+    
     return eeg_model, eeg_scaler, img_model, beh_model, beh_cols, meta_model
 
 try:
     eeg_model, eeg_scaler, img_model, beh_model, beh_cols, meta_model = load_models()
     models_loaded = True
 except Exception as e:
-    st.error(f"Error loading models: {e}. Ensure they downloaded correctly.")
+    st.error(f"Error loading models: {e}")
     models_loaded = False
 
 # ==========================================

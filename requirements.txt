@@ -1,7 +1,7 @@
 streamlit
 numpy<2.0.0
 pandas
-scikit-learn
+scikit-learn==1.6.1
 joblib
 tensorflow-cpu
 mne
@@ -9,3 +9,4 @@ scipy
 xgboost
 pillow
 gdown
+h5py
