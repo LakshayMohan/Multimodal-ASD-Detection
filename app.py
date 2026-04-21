@@ -228,6 +228,8 @@ st.header("2. Biological Data Upload")
 col_img, col_eeg = st.columns(2)
 with col_img:
     img_file = st.file_uploader("Upload Image", type=['jpg', 'jpeg', 'png'])
+    if img_file is not None:
+        st.image(img_file, caption="Uploaded Image", use_column_width=True)
 with col_eeg:
     eeg_files = st.file_uploader("Upload .set & .fdt", type=['set', 'fdt'], accept_multiple_files=True)
     eeg_set_file = next((f for f in eeg_files if f.name.endswith('.set')), None) if eeg_files else None
